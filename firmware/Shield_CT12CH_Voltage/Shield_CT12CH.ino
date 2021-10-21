@@ -35,6 +35,25 @@
 -------------------------------------------------------------------------------------------------------------
 */
 
+#include <Arduino.h>
+
+/* code for SAMD21G18A-AUT - 14 ADC channels 
+ *  Pin  3 PA02_AIN[0]
+ *  Pin  4 PA03_AREFA (AIN[1] not in arduino?) 
+ *  Pin  7 PB08_AIN[2]
+ *  Pin  8 PB09_AIN[3]
+ *  Pin  9 PA04_AIN[4]
+ *  Pin 10 PA05_AIN[5]
+ *  Pin 11 PA06_AIN[6]  (not in arduino?)
+ *  Pin 12 PA07_AIN[7]  (not in arduino?)
+ *  Pin 13 PA08_AIN[16] (not in arduino?)
+ *  Pin 14 PA09_AIN[17] (not in arduino?)
+ *  Pin 15 PA10_AIN[18] (not in arduino?)
+ *  Pin 16 PA11_AIN[18] (not in arduino?)
+ *  Pin 47 PB02_AIN[10]
+ *  Pin 48 PB03_AIN[11] (not in arduino?) -> LED 
+*/
+
 #define FILTERSETTLETIME 5000                                           //  Time (ms) to allow the filters to settle before sending data
 
 const int CT1 = 1; 
@@ -50,7 +69,6 @@ const int CT10 = 1;
 const int CT11 = 1;
 const int CT12 = 1;
 
-//#include <JeeLib.h>                                                    // make sure V12 (latest) is used if using RFM69CW
 #include "EmonLib.h"
 EnergyMonitor ct1,ct2,ct3,ct4,ct5,ct6,ct7,ct8,ct9,ct10,ct11,ct12;      // Create  instances for each CT channel
 
@@ -65,13 +83,15 @@ boolean settled = false;
 
 void setup() 
 {
-  Serial.begin(9600);
-  Serial.println("emonTX Shield CT-12-CH"); 
-  Serial.println("OpenEnergyMonitor.org");
-  Serial.print("Node: "); 
-  Serial.print(nodeID); 
-  Serial.print(" Network: "); 
-  Serial.println(networkGroup);
+  SerialUSB.begin(9600);
+  SerialUSB.println("emonTX Shield CT-12-CH + AC"); 
+  SerialUSB.println("OpenEnergyMonitor.org");
+  SerialUSB.print("Node: "); 
+  SerialUSB.print(nodeID); 
+  SerialUSB.print(" Network: "); 
+  SerialUSB.println(networkGroup);
+
+  analogReadResolution(12);
 
   pinMode(A0, INPUT);
   pinMode(A1, INPUT);
@@ -79,12 +99,12 @@ void setup()
   pinMode(A3, INPUT);
   pinMode(A4, INPUT);
   pinMode(A5, INPUT);
-  pinMode(A6, INPUT);
-  pinMode(A7, INPUT);
-  pinMode(A8, INPUT);
-  pinMode(A9, INPUT);
-  pinMode(A10, INPUT);
-  pinMode(A11, INPUT);
+  //pinMode(A6, INPUT);
+  //pinMode(A7, INPUT);
+  //pinMode(A8, INPUT);
+  //pinMode(A9, INPUT);
+  //pinMode(A10, INPUT);
+  //pinMode(A11, INPUT);
              
   if (CT1) ct1.current(1, 60.606);                                     // Setup emonTX CT channel (channel, calibration)
   if (CT2) ct2.current(2, 60.606);                                     // Calibration factor = CT ratio / burden resistance
@@ -109,53 +129,53 @@ void loop()
 { 
   if (CT1) {
     emontx.power1 = ct1.calcIrms(1480) * 240.0;                        //ct.calcIrms(number of wavelengths sample)*AC RMS voltage
-    Serial.print(emontx.power1);                                         
+    SerialUSB.print(emontx.power1);                                         
   }
   if (CT2) {
     emontx.power2 = ct2.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power2);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power2);
   } 
   if (CT3) {
     emontx.power3 = ct3.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power3);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power3);
   } 
   if (CT4) {
     emontx.power4 = ct4.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT5) {
     emontx.power4 = ct5.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT6) {
     emontx.power4 = ct6.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT7) {
     emontx.power4 = ct7.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT8) {
     emontx.power4 = ct8.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT9) {
     emontx.power4 = ct9.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT10) {
     emontx.power4 = ct10.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT11) {
     emontx.power4 = ct11.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
   if (CT12) {
     emontx.power4 = ct12.calcIrms(1480) * 240.0;
-    Serial.print(" "); Serial.print(emontx.power4);
+    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
   }
-  Serial.println(); delay(100);
+  SerialUSB.println(); delay(100);
 
   // because millis() returns to zero after 50 days ! 
   if (!settled && millis() > FILTERSETTLETIME) settled = true;
