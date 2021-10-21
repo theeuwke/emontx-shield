@@ -36,49 +36,60 @@
 */
 
 #include <Arduino.h>
+#include "EmonLib.h"
+
 
 /* code for SAMD21G18A-AUT - 14 ADC channels 
  *  Pin  3 PA02_AIN[0]
- *  Pin  4 PA03_AREFA (AIN[1] not in arduino?) 
+ *  Pin  4 PA03_AREFA (AIN[1] not in arduino?) -> VREF
  *  Pin  7 PB08_AIN[2]
  *  Pin  8 PB09_AIN[3]
  *  Pin  9 PA04_AIN[4]
  *  Pin 10 PA05_AIN[5]
- *  Pin 11 PA06_AIN[6]  (not in arduino?)
- *  Pin 12 PA07_AIN[7]  (not in arduino?)
- *  Pin 13 PA08_AIN[16] (not in arduino?)
- *  Pin 14 PA09_AIN[17] (not in arduino?)
- *  Pin 15 PA10_AIN[18] (not in arduino?)
- *  Pin 16 PA11_AIN[18] (not in arduino?)
+ *  Pin 11 PA06_AIN[6]  (not in arduino?) -> D8
+ *  Pin 12 PA07_AIN[7]  (not in arduino?) -> D10
+ *  Pin 13 PA08_AIN[16] (not in arduino?) -> D4
+ *  Pin 14 PA09_AIN[17] (not in arduino?) -> D3
+ *  Pin 15 PA10_AIN[18] (not in arduino?) -> D1
+ *  Pin 16 PA11_AIN[19] (not in arduino?) -> D0
  *  Pin 47 PB02_AIN[10]
  *  Pin 48 PB03_AIN[11] (not in arduino?) -> LED 
 */
 
-#define FILTERSETTLETIME 5000                                           //  Time (ms) to allow the filters to settle before sending data
+/* defs
+  #define PIN_A0               (14ul)
+  #define PIN_A1               (15ul)
+  #define PIN_A2               (16ul)
+  #define PIN_A3               (17ul)
+  #define PIN_A4               (18ul)
+  #define PIN_A5               (19ul)
 
-const int CT1 = 1; 
-const int CT2 = 1;                                                      // Set to 0 to disable 
-const int CT3 = 1;
-const int CT4 = 1;
-const int CT5 = 1;
-const int CT6 = 1;
-const int CT7 = 1;
-const int CT8 = 1;
-const int CT9 = 1;
-const int CT10 = 1;
-const int CT11 = 1;
-const int CT12 = 1;
+ * | 14         | A0               |  PA02  | A0              | EIC/EXTINT[2] *ADC/AIN[0]  DAC/VOUT  PTC/Y[0]
+ * | 15         | A1               |  PB08  | A1              | EIC/EXTINT[8] *ADC/AIN[2]            PTC/Y[14] SERCOM4/PAD[0]                  TC4/WO[0]
+ * | 16         | A2               |  PB09  | A2              | EIC/EXTINT[9] *ADC/AIN[3]            PTC/Y[15] SERCOM4/PAD[1]                  TC4/WO[1]
+ * | 17         | A3               |  PA04  | A3              | EIC/EXTINT[4] *ADC/AIN[4]  AC/AIN[0] PTC/Y[2]  SERCOM0/PAD[0]                  TCC0/WO[0]
+ * | 18         | A4               |  PA05  | A4              | EIC/EXTINT[5] *ADC/AIN[5]  AC/AIN[1] PTC/Y[5]  SERCOM0/PAD[1]                  TCC0/WO[1]
+ * | 19         | A5               |  PB02  | A5              | EIC/EXTINT[2] *ADC/AIN[10]           PTC/Y[8]  SERCOM5/PAD[0]
 
-#include "EmonLib.h"
-EnergyMonitor ct1,ct2,ct3,ct4,ct5,ct6,ct7,ct8,ct9,ct10,ct11,ct12;      // Create  instances for each CT channel
+  { PORTA,  2, PIO_ANALOG, PIN_ATTR_ANALOG, ADC_Channel0, NOT_ON_PWM, NOT_ON_TIMER, EXTERNAL_INT_2 }, // ADC/AIN[0]
+  { PORTB,  8, PIO_ANALOG, (PIN_ATTR_PWM|PIN_ATTR_TIMER), ADC_Channel2, PWM4_CH0, TC4_CH0, EXTERNAL_INT_8 }, // ADC/AIN[2]
+  { PORTB,  9, PIO_ANALOG, (PIN_ATTR_PWM|PIN_ATTR_TIMER), ADC_Channel3, PWM4_CH1, TC4_CH1, EXTERNAL_INT_9 }, // ADC/AIN[3]
+  { PORTA,  4, PIO_ANALOG, 0, ADC_Channel4, NOT_ON_PWM, NOT_ON_TIMER, EXTERNAL_INT_4 }, // ADC/AIN[4]
+  { PORTA,  5, PIO_ANALOG, 0, ADC_Channel5, NOT_ON_PWM, NOT_ON_TIMER, EXTERNAL_INT_5 }, // ADC/AIN[5]
+  { PORTB,  2, PIO_ANALOG, 0, ADC_Channel10, NOT_ON_PWM, NOT_ON_TIMER, EXTERNAL_INT_2 }, // ADC/AIN[10]
+*/
 
-// create structure - a neat way of packaging data for RF comms, nothing is added a a 5th integer to match data structure of voltage version
-typedef struct { int power1, power2, power3, power4, power5, power6, power7, power8, power9, power10, power11, power12, nothing; } PayloadTX; 
-PayloadTX emontx;                                                       
+/*  Time (ms) to allow the filters to settle before sending data */
+#define FILTERSETTLETIME 5000                                           
+
+/* Set to 0 to disable */
+#define CT_CH_CNT 1
+
+// Create  instances for each CT channel
+EnergyMonitor ct[CT_CH_CNT];
 
 const int LEDpin = 13;         // On-board emonTx LED 
-const int nodeID = 6;          // emonTx RFM12B node ID
-const int networkGroup = 210;  // emonTx RFM12B wireless network group - needs to be same as emonBase and emonGLC
+const int nodeID = 5;          // emonTx node ID
 boolean settled = false;
 
 void setup() 
@@ -88,92 +99,28 @@ void setup()
   SerialUSB.println("OpenEnergyMonitor.org");
   SerialUSB.print("Node: "); 
   SerialUSB.print(nodeID); 
-  SerialUSB.print(" Network: "); 
-  SerialUSB.println(networkGroup);
 
   analogReadResolution(12);
 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
-  pinMode(A4, INPUT);
-  pinMode(A5, INPUT);
-  //pinMode(A6, INPUT);
-  //pinMode(A7, INPUT);
-  //pinMode(A8, INPUT);
-  //pinMode(A9, INPUT);
-  //pinMode(A10, INPUT);
-  //pinMode(A11, INPUT);
-             
-  if (CT1) ct1.current(1, 60.606);                                     // Setup emonTX CT channel (channel, calibration)
-  if (CT2) ct2.current(2, 60.606);                                     // Calibration factor = CT ratio / burden resistance
-  if (CT3) ct3.current(3, 60.606); 
-  if (CT4) ct4.current(4, 60.606); 
-  if (CT5) ct5.current(5, 60.606); 
-  if (CT6) ct6.current(6, 60.606); 
-  if (CT7) ct7.current(7, 60.606); 
-  if (CT8) ct8.current(8, 60.606); 
-  if (CT9) ct9.current(9, 60.606); 
-  if (CT10) ct10.current(10, 60.606); 
-  if (CT11) ct11.current(11, 60.606); 
-  if (CT12) ct12.current(12, 60.606); 
-  
-  // emonTx Shield Calibration = (100A / 0.05A) / 33 Ohms
-  pinMode(LEDpin, OUTPUT);                                             // Setup indicator LED
+  //3v3, 3.3v pullup - now at least the current factor makes sense
+
+  for(int i = 0; i < CT_CH_CNT; i++) {
+    ct[i].voltage(A0, 206.5, 1.7);  // Voltage: input pin, calibration, phase_shift
+    ct[i].current(A1+1, 13.5);      // Current: input pin, calibration.
+    pinMode(A0 + i, INPUT);
+  }
+ 
+  // Setup indicator LED
+  pinMode(LEDpin, OUTPUT);                                            
   digitalWrite(LEDpin, HIGH);
-  
 }
 
 void loop() 
 { 
-  if (CT1) {
-    emontx.power1 = ct1.calcIrms(1480) * 240.0;                        //ct.calcIrms(number of wavelengths sample)*AC RMS voltage
-    SerialUSB.print(emontx.power1);                                         
-  }
-  if (CT2) {
-    emontx.power2 = ct2.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power2);
-  } 
-  if (CT3) {
-    emontx.power3 = ct3.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power3);
-  } 
-  if (CT4) {
-    emontx.power4 = ct4.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT5) {
-    emontx.power4 = ct5.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT6) {
-    emontx.power4 = ct6.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT7) {
-    emontx.power4 = ct7.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT8) {
-    emontx.power4 = ct8.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT9) {
-    emontx.power4 = ct9.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT10) {
-    emontx.power4 = ct10.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT11) {
-    emontx.power4 = ct11.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
-  }
-  if (CT12) {
-    emontx.power4 = ct12.calcIrms(1480) * 240.0;
-    SerialUSB.print(" "); SerialUSB.print(emontx.power4);
+  for(int i = 0; i < CT_CH_CNT; i++) {
+    ct[i].calcVI(20,2000);
+    ct[i].serialprint();           // Print out all variables (realpower, apparent power, Vrms, Irms, power factor)
+    //SerialUSB.print(emontx.power1);                                         
   }
   SerialUSB.println(); delay(100);
 

@@ -94,6 +94,15 @@ extern "C" unsigned int PINCOUNT_fn();
 #define PIN_A3               (17ul)
 #define PIN_A4               (18ul)
 #define PIN_A5               (19ul)
+
+#define PIN_A6               (4ul)
+#define PIN_A7               (3ul)
+#define PIN_A8               (8ul)
+#define PIN_A9               (9ul)
+#define PIN_A10              (1ul)
+#define PIN_A11              (0ul)
+#define PIN_A12              (42ul)
+
 #define PIN_DAC0             (14ul)
 
 static const uint8_t A0  = PIN_A0;
@@ -102,6 +111,15 @@ static const uint8_t A2  = PIN_A2;
 static const uint8_t A3  = PIN_A3;
 static const uint8_t A4  = PIN_A4;
 static const uint8_t A5  = PIN_A5;
+
+static const uint8_t A6  = PIN_A6;
+static const uint8_t A7  = PIN_A7;
+static const uint8_t A8  = PIN_A8;
+static const uint8_t A9  = PIN_A9;
+static const uint8_t A10  = PIN_A10;
+static const uint8_t A11  = PIN_A11;
+static const uint8_t A12  = PIN_A12;
+
 static const uint8_t DAC0 = PIN_DAC0;
 #define ADC_RESOLUTION		12
 
